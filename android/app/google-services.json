@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "416841634167",
+    "project_id": "hotel-bc51a",
+    "storage_bucket": "hotel-bc51a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:416841634167:android:938b9c08dab657f1a15172",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYrB2XEAXwPsjmiDT67-igb1QfhyLDsR0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:416841634167:android:6f660b5658d5c5caa15172",
+        "android_client_info": {
+          "package_name": "com.hotel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYrB2XEAXwPsjmiDT67-igb1QfhyLDsR0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
