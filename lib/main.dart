@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'src/Views/Authentikasi/Login.dart'; // Import komponen login sesuai path
+import 'src/Views/Dashboard/Dashboard.dart'; // Import komponen dashboard sesuai path
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,8 +14,16 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: LoginScreen(),
+    return MaterialApp(
+      title: 'Hotel K,one',
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => const LoginScreen(), // Rute untuk halaman login
+        '/dashboard': (context) => const DashboardScreen(), // Rute untuk halaman dashboard
+      },
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(builder: (context) => const LoginScreen());
+      },
     );
   }
 }

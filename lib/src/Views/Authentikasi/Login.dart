@@ -97,10 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       // Navigasi ke halaman dashboard
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
-      );
+     Navigator.pushReplacementNamed(context, '/dashboard');
 
     } on FirebaseAuthException catch (e) {
       print('Login Error: ${e.code}');

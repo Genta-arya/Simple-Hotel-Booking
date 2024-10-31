@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/src/Views/Dashboard/ScheduleList.dart';
 import 'package:flutter_application_1/src/Views/Kamar/Kamar.dart';
@@ -27,6 +28,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  // Fungsi untuk logout
+  Future<void> _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userEmail'); // Menghapus email pengguna
+    // firebase juga logout hapus sesi difirebase
+    // await FirebaseAuth.instance.signOut();
+    Navigator.of(context).pushReplacementNamed('/login'); // Navigasi ke halaman login
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,6 +47,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.blueAccent, // Warna background
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: _logout, // Panggil fungsi logout saat ditekan
+          ),
+        ],
       ),
       body: Container(
         height: double.infinity, // Memastikan container mengisi seluruh tinggi layar
@@ -128,7 +144,7 @@ class MenuComponent extends StatelessWidget {
               icon: Icons.room_service,
               onTap: () {
                 // navigate
-            Navigator.push(
+                Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const KamarScreen()),
                 );
