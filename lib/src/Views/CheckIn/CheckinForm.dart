@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:intl/intl.dart';
+import 'dart:math';
 class CheckInForm extends StatefulWidget {
   @override
   _CheckInFormState createState() => _CheckInFormState();
@@ -8,10 +9,10 @@ class CheckInForm extends StatefulWidget {
 
 class _CheckInFormState extends State<CheckInForm> {
   final _formKey = GlobalKey<FormState>();
-  TextEditingController _namaController = TextEditingController();
-  TextEditingController _nikController = TextEditingController();
-  TextEditingController _checkInController = TextEditingController();
-  TextEditingController _checkOutController = TextEditingController();
+  final TextEditingController _namaController = TextEditingController();
+  final TextEditingController _nikController = TextEditingController();
+  final TextEditingController _checkInController = TextEditingController();
+  final TextEditingController _checkOutController = TextEditingController();
   String? _selectedKamar;
   int? _selectedKamarStok;
   int? _selectedJumlahKamar;
@@ -21,12 +22,22 @@ class _CheckInFormState extends State<CheckInForm> {
     DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
+      firstDate: DateTime.now(), // Mengatur tanggal awal ke hari ini
       lastDate: DateTime(2101),
+      builder: (BuildContext context, Widget? child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            primaryColor: Colors.blueAccent,
+            buttonTheme: ButtonThemeData(textTheme: ButtonTextTheme.primary),
+            colorScheme: ColorScheme.light(primary: Colors.blueAccent),
+          ),
+          child: child!,
+        );
+      },
     );
     if (pickedDate != null) {
       setState(() {
-        controller.text = "${pickedDate.toLocal()}".split(' ')[0];
+        controller.text = DateFormat('dd-MM-yyyy').format(pickedDate);
       });
     }
   }
@@ -43,204 +54,324 @@ class _CheckInFormState extends State<CheckInForm> {
     return kamarList;
   }
 
-  Future<void> _simpanData() async {
-    // Simpan data check-in ke Firestore
-    await FirebaseFirestore.instance.collection('checkin').add({
-      'nama': _namaController.text,
-      'nik': _nikController.text,
-      'checkIn': _checkInController.text,
-      'checkOut': _checkOutController.text,
-      'kamar': _selectedKamar,
-      'jumlahKamar': _selectedJumlahKamar,
-    });
+  Future<void> _showKamarSelection() async {
+    List<Map<String, dynamic>> kamarList = await _getKamarList();
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return ListView.builder(
+          itemCount: kamarList.length,
+          itemBuilder: (context, index) {
+            return ListTile(
+              title: Text(kamarList[index]['nama']),
+              subtitle: Text("Tersedia: ${kamarList[index]['jumlah']} kamar"),
+              onTap: () {
+                setState(() {
+                  _selectedKamar = kamarList[index]['nama'];
+                  _selectedKamarStok = kamarList[index]['jumlah'];
+                });
+                Navigator.pop(context);
+              },
+            );
+          },
+        );
+      },
+    );
+  }
 
-    // Kurangi stok kamar
-    if (_selectedKamar != null && _selectedJumlahKamar != null) {
-      final kamarDoc = await FirebaseFirestore.instance
-          .collection('kamar')
-          .where('nama', isEqualTo: _selectedKamar)
-          .limit(1)
-          .get();
-      if (kamarDoc.docs.isNotEmpty) {
-        var doc = kamarDoc.docs.first;
-        int updatedStok = doc['jumlah'] - _selectedJumlahKamar!;
-        await doc.reference.update({'jumlah': updatedStok});
-      }
+  Future<void> _showJumlahKamarSelection() async {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return ListView.builder(
+          itemCount: _selectedKamarStok ?? 0,
+          itemBuilder: (context, index) {
+            return ListTile(
+              title: Text("Jumlah: ${index + 1}"),
+              onTap: () {
+                setState(() {
+                  _selectedJumlahKamar = index + 1;
+                });
+                Navigator.pop(context);
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+
+
+Future<void> _simpanData() async {
+  // Menghasilkan nomor kamar acak antara 1 dan 1000
+  int noKamar = Random().nextInt(1000) + 1; // +1 agar tidak mulai dari 0
+
+  // Menyimpan data ke Firestore
+  await FirebaseFirestore.instance.collection('checkin').add({
+    'nama': _namaController.text,
+    'nik': _nikController.text,
+    'checkIn': _checkInController.text,
+    'checkOut': _checkOutController.text,
+    'kamar': _selectedKamar,
+    'jumlahKamar': _selectedJumlahKamar,
+    'noKamar': noKamar, // Simpan noKamar yang telah ditentukan
+  });
+
+  // Mengurangi stok kamar
+  if (_selectedKamar != null && _selectedJumlahKamar != null) {
+    final kamarDoc = await FirebaseFirestore.instance
+        .collection('kamar')
+        .where('nama', isEqualTo: _selectedKamar)
+        .limit(1)
+        .get();
+    if (kamarDoc.docs.isNotEmpty) {
+      var doc = kamarDoc.docs.first;
+      int updatedStok = doc['jumlah'] - _selectedJumlahKamar!;
+      await doc.reference.update({'jumlah': updatedStok});
     }
+  }
+}
+
+
+  bool _validateDates() {
+    DateTime? checkInDate = _checkInController.text.isNotEmpty
+        ? DateFormat('dd-MM-yyyy').parse(_checkInController.text)
+        : null;
+    DateTime? checkOutDate = _checkOutController.text.isNotEmpty
+        ? DateFormat('dd-MM-yyyy').parse(_checkOutController.text)
+        : null;
+
+    if (checkInDate == null || checkOutDate == null) {
+      return false; // Tanggal tidak valid
+    }
+
+    
+
+    if (checkOutDate.isBefore(checkInDate)) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Tanggal Check-Out tidak boleh kurang dari Check-In.'),
+        backgroundColor: Colors.red,
+      ));
+      return false;
+    }
+
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Form Check-In"),
-        toolbarHeight: 50,
-        elevation: 0,
         backgroundColor: Colors.blueAccent,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: Colors.white), // Warna panah putih
+        title: Row(
+          children: [
+            Icon(Icons.hotel, color: Colors.white),
+            SizedBox(width: 8),
+            Text("Form Check-In"),
+          ],
+        ),
+        elevation: 4,
+        titleTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextFormField(
-                controller: _namaController,
-                decoration: InputDecoration(
-                  labelText: 'Nama',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Masukkan nama';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 16.0),
-              TextFormField(
-                controller: _nikController,
-                decoration: InputDecoration(
-                  labelText: 'NIK',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Masukkan NIK';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 16.0),
-              TextFormField(
-                controller: _checkInController,
-                decoration: InputDecoration(
-                  labelText: 'Tanggal Check-In',
-                  border: OutlineInputBorder(),
-                ),
-                readOnly: true,
-                onTap: () => _selectDate(context, _checkInController),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Masukkan tanggal check-in';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 16.0),
-              TextFormField(
-                controller: _checkOutController,
-                decoration: InputDecoration(
-                  labelText: 'Tanggal Check-Out',
-                  border: OutlineInputBorder(),
-                ),
-                readOnly: true,
-                onTap: () => _selectDate(context, _checkOutController),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Masukkan tanggal check-out';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 16.0),
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: _getKamarList(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return CircularProgressIndicator();
-                  }
-                  return DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      labelText: 'Pilih Kamar',
-                      border: OutlineInputBorder(),
-                    ),
-                    value: _selectedKamar,
-                    items: snapshot.data!.map((kamarData) {
-                      return DropdownMenuItem<String>(
-                        value: kamarData['nama'] as String,
-                        child: Text(kamarData['nama']),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedKamar = value;
-                        _selectedKamarStok = snapshot.data!
-                            .firstWhere((kamarData) =>
-                                kamarData['nama'] == value)['jumlah'];
-                      });
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Pilih kamar';
-                      }
-                      return null;
-                    },
-                  );
-                },
-              ),
-              SizedBox(height: 16.0),
-              DropdownButtonFormField<int>(
-                decoration: InputDecoration(
-                  labelText: 'Jumlah Kamar',
-                  border: OutlineInputBorder(),
-                ),
-                value: _selectedJumlahKamar,
-                items: _selectedKamarStok != null
-                    ? List.generate(
-                        _selectedKamarStok!,
-                        (index) => DropdownMenuItem<int>(
-                          value: index + 1,
-                          child: Text((index + 1).toString()),
+              SizedBox(height: 16),
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      elevation: 5,
+                      shadowColor: Colors.blueAccent.withOpacity(0.3),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              controller: _namaController,
+                              decoration: InputDecoration(
+                                labelText: 'Nama',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.person),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Masukkan nama';
+                                }
+                                return null;
+                              },
+                            ),
+                            SizedBox(height: 16.0),
+                            TextFormField(
+                              controller: _nikController,
+                              decoration: InputDecoration(
+                                labelText: 'NIK',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.credit_card),
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Masukkan NIK';
+                                }
+                                return null;
+                              },
+                            ),
+                            SizedBox(height: 16.0),
+                            GestureDetector(
+                              onTap: () =>
+                                  _selectDate(context, _checkInController),
+                              child: AbsorbPointer(
+                                child: TextFormField(
+                                  controller: _checkInController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Tanggal Check-In',
+                                    border: OutlineInputBorder(),
+                                    prefixIcon: Icon(Icons.calendar_today),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Masukkan tanggal check-in';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 16.0),
+                            GestureDetector(
+                              onTap: () =>
+                                  _selectDate(context, _checkOutController),
+                              child: AbsorbPointer(
+                                child: TextFormField(
+                                  controller: _checkOutController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Tanggal Check-Out',
+                                    border: OutlineInputBorder(),
+                                    prefixIcon: Icon(Icons.calendar_today),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Masukkan tanggal check-out';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 16.0),
+                            GestureDetector(
+                              onTap: _showKamarSelection,
+                              child: AbsorbPointer(
+                                child: TextFormField(
+                                  decoration: InputDecoration(
+                                    labelText: _selectedKamar ?? 'Pilih Kamar',
+                                    border: OutlineInputBorder(),
+                                    prefixIcon: Icon(Icons.bed),
+                                  ),
+                                  validator: (value) {
+                                    if (_selectedKamar == null) {
+                                      return 'Pilih kamar';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 16.0),
+                            GestureDetector(
+                              onTap: _selectedKamarStok != null
+                                  ? _showJumlahKamarSelection
+                                  : null,
+                              child: AbsorbPointer(
+                                child: TextFormField(
+                                  decoration: InputDecoration(
+                                    labelText: _selectedJumlahKamar != null
+                                        ? 'Jumlah Kamar: $_selectedJumlahKamar'
+                                        : 'Pilih Jumlah Kamar',
+                                    border: OutlineInputBorder(),
+                                    prefixIcon: Icon(Icons.confirmation_num),
+                                  ),
+                                  validator: (value) {
+                                    if (_selectedJumlahKamar == null) {
+                                      return 'Pilih jumlah kamar';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      )
-                    : [],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedJumlahKamar = value;
-                  });
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Pilih jumlah kamar';
-                  } else if (value > _selectedKamarStok!) {
-                    return 'Jumlah kamar tidak boleh lebih dari stok';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 32.0),
-              Center(
-                child: ElevatedButton(
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      if (_selectedKamarStok != null &&
-                          _selectedJumlahKamar != null &&
-                          _selectedJumlahKamar! <= _selectedKamarStok!) {
-                        await _simpanData(); // Simpan data dan update stok
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Data berhasil disimpan')),
-                        );
-                        // Reset form setelah menyimpan data
-                        _formKey.currentState!.reset();
-                        setState(() {
-                          _selectedKamar = null;
-                          _selectedJumlahKamar = null;
-                          _selectedKamarStok = null;
-                        });
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(
-                                  'Jumlah kamar melebihi stok yang tersedia')),
-                        );
-                      }
-                    }
-                  },
-                  child: Text('Simpan'),
+                      ),
+                    ),
+                    SizedBox(height: 32.0),
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          if (_formKey.currentState!.validate() && _validateDates()) {
+                            await _simpanData();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(Icons.check_circle,
+                                        color: Colors.white), // Ikon ceklis
+                                    SizedBox(
+                                        width: 8), // Spasi antara ikon dan teks
+                                    Text('Data berhasil disimpan',
+                                        style: TextStyle(color: Colors.white)),
+                                  ],
+                                ),
+                                backgroundColor: Colors
+                                    .green, // Warna hijau untuk pesan berhasil
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        10)), // SnackBar melayang dengan sudut membulat
+                                duration: Duration(
+                                    seconds: 2), // Durasi tampil SnackBar
+                              ),
+                            );
+
+                            _formKey.currentState!.reset();
+                            _namaController.clear();
+                            _nikController.clear();
+                            _checkInController.clear();
+                            _checkOutController.clear();
+                            setState(() {
+                              _selectedKamar = null;
+                              _selectedJumlahKamar = null;
+                              _selectedKamarStok = null;
+                            });
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          backgroundColor: Colors.blueAccent,
+                        ),
+                        icon: Icon(Icons.check_circle, color: Colors.white),
+                        label: Text(
+                          'Check-In',
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

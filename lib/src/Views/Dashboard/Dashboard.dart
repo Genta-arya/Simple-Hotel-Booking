@@ -1,8 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/src/Views/CheckIn/CheckinForm.dart';
+import 'package:flutter_application_1/src/Views/Checkout/Checkout.dart';
 import 'package:flutter_application_1/src/Views/Dashboard/ScheduleList.dart';
 import 'package:flutter_application_1/src/Views/Kamar/Kamar.dart';
+import 'package:flutter_application_1/src/Views/Laporan/Laporan.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -44,7 +47,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text(''),
         titleTextStyle: const TextStyle(color: Colors.white), // Warna judul
-        toolbarHeight: 40, // Ukuran tulisan title
+        toolbarHeight: 50, // Ukuran tulisan title
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.blueAccent, // Warna background
@@ -57,7 +60,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: Container(
         height: double.infinity, // Memastikan container mengisi seluruh tinggi layar
-        padding: const EdgeInsets.all(16.0), // Padding di sekeliling
+        padding: const EdgeInsets.all(8.0), // Padding di sekeliling
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start, // Rata kiri
           children: [
@@ -79,10 +82,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: Colors.blueAccent,
               ),
             ),
-            const SizedBox(height: 16), // Spasi antara header dan grid
+            const SizedBox(height: 16), // Spasi antara header dan daftar kamar
+            const RoomListComponent(), // Memanggil komponen daftar kamar
+            const SizedBox(height: 16), // Spasi antara daftar kamar dan menu
             const MenuComponent(), // Memanggil komponen menu
-            const SizedBox(height: 16), // Spasi antara menu dan jadwal
-            const ScheduleListComponent(), // Memanggil komponen daftar jadwal
           ],
         ),
       ),
@@ -99,9 +102,9 @@ class MenuComponent extends StatelessWidget {
     return Card(
       color: Colors.blue, // Warna background Card
       elevation: 4,
-      margin: const EdgeInsets.all(8),
+      margin: const EdgeInsets.all(2),
       child: Padding(
-        padding: const EdgeInsets.all(16.0), // Padding di dalam Card
+        padding: const EdgeInsets.all(5.0), // Padding di dalam Card
         child: GridView.count(
           crossAxisCount: 2, // Jumlah kolom
           childAspectRatio: 1.5, // Rasio tinggi dan lebar kartu
@@ -125,8 +128,9 @@ class MenuComponent extends StatelessWidget {
               title: 'Check Out',
               icon: Icons.check_circle_outline,
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Check Out Dipilih')),
+               Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => CheckoutScreen()),
                 );
               },
             ),
@@ -135,15 +139,16 @@ class MenuComponent extends StatelessWidget {
               title: 'Laporan',
               icon: Icons.receipt,
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Laporan Dipilih')),
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ReportList()),
                 );
               },
             ),
             _buildCard(
               context,
               title: 'Kamar',
-              icon: Icons.room_service,
+              icon: Icons.bed_sharp,
               onTap: () {
                 // navigate
                 Navigator.push(
