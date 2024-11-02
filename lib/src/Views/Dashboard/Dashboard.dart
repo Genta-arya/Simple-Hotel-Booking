@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/src/Views/CheckIn/CheckinForm.dart';
 import 'package:flutter_application_1/src/Views/Dashboard/ScheduleList.dart';
 import 'package:flutter_application_1/src/Views/Kamar/Kamar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -113,8 +114,9 @@ class MenuComponent extends StatelessWidget {
               icon: Icons.check_circle,
               onTap: () {
                 // Tindakan ketika kartu Check In ditekan
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Check In Dipilih')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => CheckInForm()),
                 );
               },
             ),
